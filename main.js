@@ -3,26 +3,20 @@ var CryptoJS = require("crypto-js");
 var express = require("express");
 var bodyParser = require('body-parser');
 var WebSocket = require("ws");
-const {mathematicalProblems} = require("./mathematical-problems");
 var http_port = process.env.HTTP_PORT || 3001;
 var p2p_port = process.env.P2P_PORT || 6001;
 var initialPeers = process.env.PEERS ? process.env.PEERS.split(',') : [];
 const {
-    numberOfPiSearch,
-    findingSmallestVariance,
-    goldenRatio
+    determinantOfMatrix
 } = require('./mathematical-problems')
-/////
-var difficulty = 4;
 
 class Block {
-    constructor(index, previousHash, timestamp, data, hash, difficulty, nonce) {
+    constructor(index, previousHash, timestamp, data, hash, nonce) {
         this.index = index;
         this.previousHash = previousHash.toString();
         this.timestamp = timestamp;
         this.data = data;
         this.hash = hash.toString();
-        this.difficulty = difficulty;
         this.nonce = nonce;
     }
 }
@@ -44,16 +38,11 @@ var blockchain = [getGenesisBlock()];
 
 var initHttpServer = () => {
     var app = express();
-    const cors = require('cors');
-    app.use(cors({
-        origin: 'http://localhost:3000',
-        methods: ['GET', 'POST'],
-    }));
     app.use(bodyParser.json());
     app.get('/blocks', (req, res) => res.send(JSON.stringify(blockchain)));
     app.post('/mineBlock', (req, res) => {
         // var newBlock = generateNextBlock(req.body.data);
-        var newBlock = mineBlock(req.body.data, req.body.typeOfProblem);
+        var newBlock = mineBlock(req.body.data, req.body.typeOfProblem, req.body.divider);
         addBlock(newBlock);
         broadcast(responseLatestMsg());
         console.log('block added: ' + JSON.stringify(newBlock));
@@ -73,7 +62,7 @@ var initHttpServer = () => {
 };
 
 
-var mineBlock = (blockData, typeOfProblem) => {
+var mineBlock = (blockData, typeOfProblem, divider) => {
     var previousBlock = getLatestBlock();
     var nextIndex = previousBlock.index + 1;
     var nonce = 0;
@@ -81,57 +70,35 @@ var mineBlock = (blockData, typeOfProblem) => {
     var nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp,
         blockData, nonce);
     let found = false
-
+    console.log(typeOfProblem)
 
     while (found === false) {
         nonce++;
         nextTimestamp = new Date().getTime() / 1000;
         nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockData, nonce)
-        console.log(`type of problem: ${typeOfProblem}`)
-
-        if (typeOfProblem === 'pi') {
-            const number = numberOfPiSearch(nextHash);
-            if (Math.abs(number - Math.PI) < 0.01) {
-                console.log(`Два заданных числа  в сумме дают число Пи 3.14`);
-                found = true
-            } else {
-                console.log(`Два заданных числа  в сумме НЕ дают число Пи 3.14`);
-            }
-        }
-        if (typeOfProblem === 'variance') {
-            const number = findingSmallestVariance(nextHash);
-            if (number < 3.5) {
-                console.log(`Вычисленная дисперсия является низкой  ${number} < 3.5`);
-                found = true
-            } else {
-                console.log(`Вычисленная дисперсия НЕ ЯВЛЯЕТСЯ низкой ${number} > 3.5`);
-            }
-
+        const number = determinantOfMatrix(nextHash); //Вычисленный определитель
+        const bitDepth = Math.abs(number).toString().length //Разрядность определителя
+        if (!!number && bitDepth > 6 && Math.abs(number) % divider === 0) { // !!number - защита от возможного undefined
+            console.log(`Исследование полученого определителя |A|:`);
+            console.log('a) Разрядность = ' + bitDepth + ' > 6' )
+            console.log(`b) Деление без остатка на ${divider}: ` + ` ${number} / ${divider} = ${number/divider}`)
+            found = true
+        } else {
+            console.log(`Значение |A| НЕ СООТВЕТСТВУЕТ заданным условиям `);
         }
 
-        if (typeOfProblem === 'ratio') {
-            const number = goldenRatio(nextHash);
-            if (Math.abs(number - 1.618) < 0.001) {
-                console.log(`Вычисленное значение ${number} близко к числу Ф = 1,618`);
-                found = true
-            } else {
-                console.log(`Вычисленное значение ${number} НЕ СООТВЕТСТВУЕТ числу Ф = 1,618`);
-            }
-
-        }
 
 
         console.log("\"index\":" + nextIndex +
             ",\"previousHash\":" + previousBlock.hash +
             "\"timestamp\":" + nextTimestamp + ",\"data\":" + blockData +
             ",\x1b[33mhash: " + nextHash + " \x1b[0m," +
-            "\"difficulty\":" + difficulty +
             " \x1b[33mnonce: " + nonce + " \x1b[0m ");
 
     }
 
     return new Block(nextIndex, previousBlock.hash, nextTimestamp, blockData,
-        nextHash, difficulty, nonce);
+        nextHash, nonce);
 
 }
 

@@ -1,58 +1,73 @@
 const {
     rounding,
-    extractDigits,
-    sumOfTrigonometricSquares
+    extractDigits
 } = require('./auxiliary-functions')
 
-const numberOfPiSearch = (nextHash) => {
-    console.log('The search for a suitable number has begun:')
 
-    const lastFive = parseInt(nextHash.slice(-15), 16).toString()
-    const arrOfNumbers = lastFive.split('').map(num => parseInt(num))
-    const half_length = Math.ceil(arrOfNumbers.length / 2);
-    const leftSideSum = arrOfNumbers.slice(0, half_length).reduce((partialSum, a) => partialSum + a, 0);
-    const rightSideSum = arrOfNumbers.slice(half_length).reduce((partialSum, a) => partialSum + a, 0);
-    const a = rounding(leftSideSum / rightSideSum)
-    const b = rounding((rightSideSum + rightSideSum) / leftSideSum)
+const determinantOfMatrix = (nextHash) => {
 
-    console.log(`Current sum : ${a} + ${b} = ${a + b}`)
+    //Построим матрицу
+    const matrixFromArray = (arr) => {
+        const rows = rounding(Math.sqrt(arr.length), 0)
+        console.log('1) Число элементов в матрице:' + arr.length)
+        //проверка длины массива цифр из хеша на пригодность для построения матрицы
+        if (arr.length !== Math.pow(rows, 2)) {
+            console.log("Количество элементов в массиве не соответствует размеру матрицы");
+            return
+        }
 
-    return a + b
-}
+        const matrix = [];
+        //строим матрицу
+        for (let i = 0; i < rows; i++) {
+            matrix[i] = arr.slice(i * rows, (i + 1) * rows);
+        }
+        console.log('2) Полученная матрица:')
+        console.table(matrix)
+        return matrix;
+    }
 
-const goldenRatio = (nextHash) => {
-    console.log('The search for the golden ratio number has begun:')
+//Вычисление определителя матрицы
+    const calculatingDeterminant = (matrix) => {
 
-    const letters = nextHash.replace(/[^A-Za-z]/g, '').split('')
-    const lettersNumbers = letters.map(letter => letter.charCodeAt(0) - 96)
-    const result = sumOfTrigonometricSquares(lettersNumbers)
-    const sumOfResult = result.reduce((partialSum, a) => partialSum + a, 0)
-    const volume = result.length
-    const goldenNumber = Math.round(volume / sumOfResult * 1000) / 1000
+        //код проходит по всем столбцам исходной матрицы,
+        // для каждого столбца создает подматрицу (без текущей строки и текущего столбца),
+        // рекурсивно вычисляет определитель подматрицы
 
-    console.log('sum of result arr = ' + sumOfResult)
-    console.log('volume of arr = ' + volume)
-    console.log('result = ' + goldenNumber)
+        const n = matrix.length;
+        if (n === 1) {
+            return matrix[0][0];
+        } else if (n === 2) {
+            return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+        } else { //условие для матриц большей размерности
+            let det = 0; //сюда будем записывать значения определителей подматриц
+            for (let j = 0; j < n; j++) { //цикл для столбцов матрицы
+                const subMatrix = []; //подматрица
+                for (let i = 1; i < n; i++) { //цикл для строк матрицы
+                    subMatrix[i - 1] = matrix[i].slice(0, j).concat(matrix[i].slice(j + 1));
+                    //Подматрица получается путем удаления текущей строки (индекс i) и текущего столбца (индекс j) из исходной матрицы
+                }
+                det += Math.pow(-1, j) * matrix[0][j] * calculatingDeterminant(subMatrix);
+                //Math.pow(...) вычисляет знак для элемента матрицы в зависимости от номера столбца (чередование знаков: +, -, +, …)
+                //matrix[0][j] - берется элемент первой строки и текущего столбца исходной матрицы.
+                // calculatingDeterminant(subMatrix) - вызывается рекурсивно функция для вычисления определителя полученной подматрицы.
+            }
+            return det;
+        }
+    }
+    const matrix = matrixFromArray(extractDigits(nextHash))
 
-    return goldenNumber
-}
+    if (!!matrix){ //если матрица посстроена ... (то есть !!matrix === true), посчитаем определитель
+        const det = calculatingDeterminant(matrix)
+        console.log('3) Посчитаем определитель: |A| = ' + det)
+        return det
+    }
+    else{
+        console.log('Данная матрица нам не подходит :(')
+    }
 
-const findingSmallestVariance = (nextHash) => {
-    console.log('The search for variance has begun:')
-
-    const arrOfNums = extractDigits(nextHash)
-    const volume = arrOfNums.length
-    const average = rounding((arrOfNums.reduce((partialSum, a) => partialSum + a, 0) / volume))
-    const variance = rounding(arrOfNums.reduce((partialSum, a) => partialSum + (a - average) ** 2, 0) / (volume - 1))
-
-    console.log(`Variance: ${variance}`)
-
-    return variance
 }
 
 
 module.exports = {
-    numberOfPiSearch,
-    findingSmallestVariance,
-    goldenRatio
+    determinantOfMatrix
 }

@@ -1,5 +1,10 @@
-const rounding = (num) => {
-    return Math.round(num * 100) / 100
+// const rounding = (num) => {
+//     return Math.round(num * 100) / 100
+// }
+
+const rounding = (num, decimalPlaces) => {
+    const factor = Math.pow(10, decimalPlaces);
+    return Math.round(num * factor) / factor;
 }
 
 const extractDigits = (str) => {
@@ -9,19 +14,13 @@ const extractDigits = (str) => {
             digits.push(parseInt(str[i]));
         }
     }
+    console.log('Выбрали цифры из хеша: ')
+    console.log(digits)
     return digits;
 }
 
-const sumOfTrigonometricSquares = (data) => {
-    const result = []
-    for (let i = 0; i < data.length; i++) {
-        result.push(Math.floor(Math.cos(data[i]) ** 2 + Math.sin(data[i]) ** 2))
-    }
-    return result
-}
 
 module.exports = {
     rounding,
-    extractDigits,
-    sumOfTrigonometricSquares
+    extractDigits
 }
